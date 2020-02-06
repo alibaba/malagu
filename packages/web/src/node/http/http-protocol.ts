@@ -15,6 +15,7 @@ export interface Request {
     path: string;
     query: { [key: string]: string };
     connection: net.Socket;
+    uuid?: string;
 }
 
 export interface Response {
