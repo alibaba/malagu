@@ -8,7 +8,7 @@ export enum AttributeScope { App, Request, Session }
 export const CURRENT_CONTEXT_REQUEST_KEY = 'CurrentContextRequest';
 export const CURRENT_COOKIES_REQUEST_KEY = 'CurrentCookiesRequest';
 export const CURRENT_SESSION_REQUEST_KEY = 'CurrentSessionRequest';
-export const CURRENT_TRACE_ID_REQUEST_KEY = 'CurrentTraceRequest';
+export const CURRENT_TRACE_ID_REQUEST_KEY = 'CurrentTraceIdRequest';
 
 const appAttrs = new Map<string, any>();
 

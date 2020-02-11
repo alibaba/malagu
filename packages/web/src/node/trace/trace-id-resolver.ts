@@ -8,9 +8,9 @@ export class TraceIdResolverImpl implements TraceIdResolver {
     @Value(TRACE_ID_REQUEST_FIELD)
     protected readonly traceField: string;
 
-    resolve(ctx: Context): Promise<string> {
-        if (ctx.request && this.traceField ) {
-            const traceId = ctx.request.headers[this.traceField] as string | undefined;
+    resolve(): Promise<string> {
+        if (Context.getRequest() && this.traceField ) {
+            const traceId = Context.getRequest().headers[this.traceField] as string | undefined;
             if (traceId) {
                 return Promise.resolve(traceId);
             }

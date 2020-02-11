@@ -16,15 +16,17 @@ export class TraceMiddleware implements Middleware {
     async handle(ctx: Context, next: () => Promise<void>): Promise<void> {
         const method = ctx.request.method;
         const path = ctx.request.path;
-        const traceId = await this.traceIdResolver.resolve(ctx);
+        const traceId = await this.traceIdResolver.resolve();
         this.logger.info(`starting ${method} ${path} with traceId[${traceId}]`);
         const now = Date.now();
 
         Context.setTraceId(traceId);
         ctx.response.setHeader(TRACE_ID_RESPONSE_FIELD, traceId);
-
-        await next();
-        this.logger.info(`ending ${method} ${path} with traceId[${traceId}], cost ${Date.now() - now}ms`);
+        try {
+          await next();
+        } finally {
+          this.logger.info(`ending ${method} ${path} with traceId[${traceId}], cost ${Date.now() - now}ms`);
+        }
     }
 
     readonly priority = TRACE_MIDDLEWARE_PRIORITY;
