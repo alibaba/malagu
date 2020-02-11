@@ -2,7 +2,7 @@ import { TraceIdResolver } from './trace-protocol';
 import { Middleware } from '../middleware';
 import { Context } from '../context';
 import { Component, Autowired, Logger } from '@malagu/core';
-import { TRACE_MIDDLEWARE_PRIORITY, RESPONSE_TRACE_ID_FIELD } from './trace-protocol';
+import { TRACE_MIDDLEWARE_PRIORITY, TRACE_ID_RESPONSE_FIELD } from './trace-protocol';
 
 @Component(Middleware)
 export class TraceMiddleware implements Middleware {
@@ -21,7 +21,7 @@ export class TraceMiddleware implements Middleware {
         const now = Date.now();
 
         Context.setTraceId(traceId);
-        ctx.response.setHeader(RESPONSE_TRACE_ID_FIELD, traceId);
+        ctx.response.setHeader(TRACE_ID_RESPONSE_FIELD, traceId);
 
         await next();
         this.logger.info(`ending ${method} ${path} with traceId[${traceId}], cost ${Date.now() - now}ms`);

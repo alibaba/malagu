@@ -8,6 +8,8 @@ malagu:
     path: /
     port: 3000
     endpoint: http://localhost:{port}
+  trace:
+    responseField: 'X-Malagu-Trace-ID'
 backend:
   entry: lib/node/application/dev-application-entry
   malagu:
