@@ -7,7 +7,6 @@ export const TRACE_ID_REQUEST_FIELD = 'malagu.trace.requestField';
 
 export const RESPONSE_TRACE_ID_FIELD = 'X-Malagu-Request-ID';
 
-
 export const TraceIdResolver = Symbol('TraceIdResolver');
 
 export interface TraceIdResolver {

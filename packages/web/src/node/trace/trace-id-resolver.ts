@@ -1,12 +1,11 @@
 import { v4 } from 'uuid';
 import { Component, Value } from '@malagu/core';
-import { TraceIdResolver } from './trace-protocol';
+import { TraceIdResolver, TRACE_ID_REQUEST_FIELD } from './trace-protocol';
 import { Context } from '../context';
-import { TRACE_ID_FIELD } from './trace-protocol';
 
 @Component(TraceIdResolver)
 export class TraceIdResolverImpl implements TraceIdResolver {
-    @Value(TRACE_ID_FIELD)
+    @Value(TRACE_ID_REQUEST_FIELD)
     protected readonly traceField: string;
 
     resolve(ctx: Context): Promise<string> {
