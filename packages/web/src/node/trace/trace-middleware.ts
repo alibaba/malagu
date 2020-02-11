@@ -1,4 +1,4 @@
-import { TraceIdResolver } from './trace-id-resolver-protocol';
+import { TraceIdResolver } from './trace-protocol';
 import { Middleware } from '../middleware';
 import { Context } from '../context';
 import { Component, Autowired, Logger } from '@malagu/core';
@@ -16,7 +16,7 @@ export class TraceMiddleware implements Middleware {
     async handle(ctx: Context, next: () => Promise<void>): Promise<void> {
         const method = ctx.request.method;
         const path = ctx.request.path;
-        const traceId = this.traceIdResolver.resolve(ctx);
+        const traceId = await this.traceIdResolver.resolve(ctx);
         this.logger.info(`starting ${method} ${path} with traceId[${traceId}]`);
         const now = Date.now();
 

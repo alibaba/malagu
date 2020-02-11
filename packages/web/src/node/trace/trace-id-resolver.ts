@@ -1,6 +1,6 @@
 import { v4 } from 'uuid';
 import { Component, Value } from '@malagu/core';
-import { TraceIdResolver } from './trace-id-resolver-protocol';
+import { TraceIdResolver } from './trace-protocol';
 import { Context } from '../context';
 import { TRACE_ID_FIELD } from './trace-protocol';
 
@@ -9,13 +9,13 @@ export class TraceIdResolverImpl implements TraceIdResolver {
     @Value(TRACE_ID_FIELD)
     protected readonly traceField: string;
 
-    resolve(ctx: Context): string {
+    resolve(ctx: Context): Promise<string> {
         if (ctx.request && this.traceField ) {
             const traceId = ctx.request.headers[this.traceField] as string | undefined;
             if (traceId) {
-                return traceId;
+                return Promise.resolve(traceId);
             }
         }
-        return v4();
+        return Promise.resolve(v4());
     }
 }
