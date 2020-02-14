@@ -10,13 +10,13 @@ export class DefaultLogger extends AbstractLogger<Log> {
     protected readonly level: LogLevelDesc;
 
     child(option?: { component: string}) {
-        let component = 'malagu'
+        let component = 'malagu';
         if (option?.component) {
             component = option.component;
         }
         const logger = getLogger(component);
         logger.setDefaultLevel(this.level);
-        return this.proxyLogger(logger, component, this.formatPrefix);
+        return this.proxyLogger(logger, this.formatPrefix, component);
     }
 
     formatPrefix(level: LogLevel, component: string) {
