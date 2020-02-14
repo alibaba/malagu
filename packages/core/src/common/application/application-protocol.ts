@@ -1,7 +1,8 @@
 import { MaybePromise } from '../utils/prioritizeable';
 import { Deferred } from '../utils/promise-util';
 import { injectable } from 'inversify';
-import { Logger } from '../logger';
+import { Logger as Log } from 'loglevel';
+import { Logger, DefaultLogger } from '../logger';
 import { Autowired, Component } from '../annotation';
 import { Emitter, Event } from 'vscode-jsonrpc';
 
@@ -40,10 +41,14 @@ export abstract class AbstractApplication implements Application {
     @Autowired(ApplicationLifecycle)
     protected readonly lifecycles: ApplicationLifecycle<Application>[];
 
-    @Autowired(Logger)
-    protected readonly logger: Logger;
-
     abstract start(): Promise<void>;
+
+    protected readonly _logger: Log;
+
+    constructor(
+      @Autowired(Logger) protected readonly logger: DefaultLogger) {
+        this._logger = this.logger.child({ component: 'malagu:core:application' });
+    }
 
     /**
      * Initialize and start the frontend application.
@@ -54,7 +59,7 @@ export abstract class AbstractApplication implements Application {
                 try {
                     lifecycle.initialize();
                 } catch (error) {
-                    this.logger.error('Could not initialize lifecycle', error);
+                    this._logger.error('Could not initialize lifecycle', error);
                 }
             }
         }
@@ -66,7 +71,7 @@ export abstract class AbstractApplication implements Application {
                 try {
                     await lifecycle.onStart(this);
                 } catch (error) {
-                    this.logger.error('Could not start lifecycle', error);
+                    this._logger.error('Could not start lifecycle', error);
                 }
             }
         }
@@ -81,7 +86,7 @@ export abstract class AbstractApplication implements Application {
                 try {
                     lifecycle.onStop(this);
                 } catch (error) {
-                    this.logger.error('Could not stop lifecycle', error);
+                    this._logger.error('Could not stop lifecycle', error);
                 }
             }
         }

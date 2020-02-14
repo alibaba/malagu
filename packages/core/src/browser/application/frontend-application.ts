@@ -93,7 +93,7 @@ export class FrontendApplication extends AbstractApplication {
                 try {
                     lifecycle.initialize();
                 } catch (error) {
-                    this.logger.error('Could not initialize lifecycle', error);
+                    this._logger.error('Could not initialize lifecycle', error);
                 }
             }
         }
@@ -107,7 +107,7 @@ export class FrontendApplication extends AbstractApplication {
                         () => lifecycle.onStart!(this)
                     );
                 } catch (error) {
-                    this.logger.error('Could not start lifecycle', error);
+                    this._logger.error('Could not start lifecycle', error);
                 }
             }
         }
