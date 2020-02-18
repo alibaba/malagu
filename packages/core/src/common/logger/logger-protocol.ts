@@ -1,44 +1,60 @@
-import { injectable } from 'inversify';
-import * as os from 'os';
+import * as log from 'loglevel';
+import { Component, Value } from '../annotation';
 
-export const LOGGER_LEVEL = 'malagu.logger.level';
-export const Logger = Symbol('Logger');
+export const LOGGER_CONFIG = 'malagu.logger';
+export const ILogger = Symbol('Logger');
 
 export type LogLevel = 'verbose' | 'debug' | 'info' | 'warn' | 'error';
 
-export interface Log {
-    info(message: any): void;
-    error(message: any): void;
-    warn(message: any): void;
-    debug?(message: any): void;
-    verbose?(message: any): void;
+export interface LoggerImpl {
+    info(message: any, context?: string): void;
+    error(message: any, context?: string): void;
+    warn(message: any, context?: string): void;
+    debug(message: any, context?: string): void;
+    verbose(message: any, context?: string): void;
 }
 
-type prefixFunc = (level: LogLevel, component: string) => string;
-@injectable()
-export abstract class AbstractLogger<T extends { [key: string]: any}> {
-    abstract child(option: { component: string}): T;
-    abstract formatPrefix(level: LogLevel, component: string): string;
+@Component(Logger)
+export class Logger implements LoggerImpl {
+    protected instance: LoggerImpl;
 
-    proxyLogger(logger: T, prefixFunOrString: string | prefixFunc, component?: string) {
-        return new Proxy(logger, {
-            get(target: T, propKey: string) {
-                const origMethod = target[propKey];
-                const supportMethod = ['verbose', 'debug', 'info', 'warn', 'error'];
-                if (supportMethod.indexOf(propKey) === -1) {
-                    return (...argument: any[]) => origMethod.apply(this, [...argument]);
-                }
-                const prefix = typeof prefixFunOrString === 'string' ? prefixFunOrString : prefixFunOrString(propKey as LogLevel, component || 'malagu');
-                return (...argument: any[]) => origMethod.apply(this, [prefix, ...argument]);
-            }
-        });
+    constructor(
+      @Value(LOGGER_CONFIG) protected readonly config: any
+    ) {
+      this.instance.error = log.error;
+      this.instance.warn = log.warn;
+      this.instance.info = log.info;
+      this.instance.debug = log.debug;
+      this.instance.verbose = log.trace;
+
+      if (config.level) {
+        log.setDefaultLevel(config.level)
+      } else {
+        log.setDefaultLevel('error')
+      }
     }
 
-    get pid() {
-        return !(process as any).browser ? process.getgid() : '';
+    error(message: any, context = '') {
+      return this.log('error', message, context);
     }
 
-    get hostname() {
-        return !(process as any).browser ? os.hostname() : '';
+    info(message: any, context = '') {
+      return this.log('info', message, context);
+    }
+
+    warn(message: any, context = '') {
+      return this.log('warn', message, context);
+    }
+
+    debug(message: any, context = '') {
+      return this.log('debug', message, context);
+    }
+
+    verbose(message: any, context = '') {
+      return this.log('verbose', message, context);
+    }
+
+    private log(logLevel: LogLevel, message: any, context: string) {
+      this.instance[logLevel](context, message);
     }
 }

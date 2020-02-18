@@ -1,7 +1,7 @@
 auto: false
 malagu:
   log:
-    level: 'error'
+    level: 'info'
 frontend:
   entry: lib/common/application/application-entry
 backend:
