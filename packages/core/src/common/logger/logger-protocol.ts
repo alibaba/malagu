@@ -28,9 +28,9 @@ export class Logger implements LoggerImpl {
       this.instance.verbose = log.trace;
 
       if (config.level) {
-        log.setDefaultLevel(config.level)
+        log.setDefaultLevel(config.level);
       } else {
-        log.setDefaultLevel('error')
+        log.setDefaultLevel('error');
       }
     }
 
