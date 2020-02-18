@@ -1,6 +1,6 @@
 auto: false
 malagu:
-  log:
+  logger:
     level: 'info'
 frontend:
   entry: lib/common/application/application-entry

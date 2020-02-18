@@ -11,7 +11,7 @@ export class TraceMiddleware implements Middleware {
     protected readonly traceIdResolver: TraceIdResolver;
 
     @Autowired(Logger)
-    private readonly logger: Logger;
+    protected readonly logger: Logger;
 
     async handle(ctx: Context, next: () => Promise<void>): Promise<void> {
         const method = ctx.request.method;

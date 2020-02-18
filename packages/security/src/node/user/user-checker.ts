@@ -5,7 +5,7 @@ import { LockedError, AccountExpiredError, DisabledError, CredentialsExpiredErro
 @Component(UserChecker)
 export class UserCheckerImpl implements UserChecker {
     @Autowired(Logger)
-    private readonly logger: Logger;
+    protected readonly logger: Logger;
 
     async check(user: User): Promise<void> {
         if (!user.accountNonLocked) {

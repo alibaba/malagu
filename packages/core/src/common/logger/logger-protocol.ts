@@ -2,11 +2,11 @@ import * as log from 'loglevel';
 import { Component, Value } from '../annotation';
 
 export const LOGGER_CONFIG = 'malagu.logger';
-export const ILogger = Symbol('Logger');
+export const Logger = Symbol('Logger');
 
 export type LogLevel = 'verbose' | 'debug' | 'info' | 'warn' | 'error';
 
-export interface LoggerImpl {
+export interface Logger {
     info(message: any, context?: string): void;
     error(message: any, context?: string): void;
     warn(message: any, context?: string): void;
@@ -15,8 +15,8 @@ export interface LoggerImpl {
 }
 
 @Component(Logger)
-export class Logger implements LoggerImpl {
-    protected instance: LoggerImpl;
+export class LoggerImpl implements Logger {
+    protected instance: Logger;
 
     constructor(
       @Value(LOGGER_CONFIG) protected readonly config: any
@@ -54,7 +54,7 @@ export class Logger implements LoggerImpl {
       return this.log('verbose', message, context);
     }
 
-    private log(logLevel: LogLevel, message: any, context: string) {
-      this.instance[logLevel](context, message);
+    protected log(logLevel: LogLevel, message: any, context: string) {
+      this.instance[logLevel](message, context);
     }
 }

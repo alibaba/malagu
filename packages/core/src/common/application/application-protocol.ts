@@ -53,7 +53,6 @@ export abstract class AbstractApplication implements Application {
             if (lifecycle.initialize) {
                 try {
                     lifecycle.initialize();
-                    this.logger.info('xxxx', 'SSSSS');
                 } catch (error) {
                     this.logger.error('Could not initialize lifecycle', error);
                 }
