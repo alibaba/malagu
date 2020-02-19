@@ -46,7 +46,7 @@ export class NPM {
                         !ignoredNpmErrors.some(ignoredError => error.startsWith(error, `npm ERR! ${ignoredError.npmError}`))
                     );
                 },
-                    false
+                false
                 );
 
                 if (!failed && !err.stdout) {

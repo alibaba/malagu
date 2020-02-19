@@ -35,7 +35,7 @@ export class Yarn {
                         !ignoredYarnErrors.some(ignoredError => error.startsWith(error, `npm ERR! ${ignoredError.npmError}`))
                     );
                 },
-                    false
+                false
                 );
 
                 if (!failed && !err.stdout) {
