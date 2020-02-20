@@ -14,7 +14,10 @@ module.exports = {
             "webpack-dev-middleware",
             "internal-ip",
             "@malagu/core",
-            "@malagu/core/lib/common/container/dynamic-container"
+            "@malagu/core/lib/common/container/dynamic-container",
+            "ora",
+            "chalk",
+            "js-yaml"
         ],
     }
 }
