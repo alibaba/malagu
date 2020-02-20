@@ -49,7 +49,7 @@
   },
   "scripts": {
     "prepare": "yarn run build:clean",
-    "build": "lerna run build --scope \"@malagu/security\"",
+    "build": "lerna run build --scope \"@malagu/typeorm\"",
     "clean": "lerna run clean",
     "build:clean": "lerna run prepare",
     "docs": "lerna run docs \"@malagu/!(example-)*\"",
