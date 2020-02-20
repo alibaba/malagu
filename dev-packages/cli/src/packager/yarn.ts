@@ -35,7 +35,7 @@ export class Yarn {
                         !ignoredYarnErrors.some(ignoredError => error.startsWith(error, `npm ERR! ${ignoredError.npmError}`))
                     );
                 },
-                    false
+                false
                 );
 
                 if (!failed && !err.stdout) {
@@ -82,6 +82,7 @@ export class Yarn {
         let match;
 
         // Detect all references and create replacement line strings
+        // eslint-disable-next-line no-null/no-null
         while ((match = fileVersionMatcher.exec(lockfile)) !== null) {
             replacements.push({
                 oldRef: match[1],
@@ -101,7 +102,7 @@ export class Yarn {
         if (packagerOptions.ignoreScripts) {
             args.push('--ignore-scripts');
         }
-        return await spawnProcess(command, args, { cwd, stdio: 'inherit' });
+        await spawnProcess(command, args, { cwd, stdio: 'inherit' });
     }
 
     // "Yarn install" prunes automatically
