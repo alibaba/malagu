@@ -9,6 +9,9 @@ module.exports = {
         "import/core-modules": [
             "vscode-jsonrpc",
             "vscode-jsonrpc/lib/events",
+            "vscode-jsonrpc/lib/messageReader",
+            "vscode-jsonrpc/lib/messages",
+            "vscode-jsonrpc/lib/messageWriter",
             "vscode-languageserver-protocol",
             "vscode-languageserver-types",
             "webpack-dev-middleware",
@@ -22,7 +25,9 @@ module.exports = {
             "chalk",
             "js-yaml",
             "@malagu/react/lib/browser",
-            "reflect-metadata"
+            "reflect-metadata",
+            "inversify-binding-decorators",
+            "url-join"
         ],
     }
 }
