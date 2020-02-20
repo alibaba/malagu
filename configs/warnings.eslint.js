@@ -29,7 +29,8 @@ module.exports = {
             "reflect-metadata",
             "inversify-binding-decorators",
             "url-join",
-            "express"
+            "express",
+            "@phosphor/messaging"
         ],
     }
 }
