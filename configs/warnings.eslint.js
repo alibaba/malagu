@@ -15,9 +15,11 @@ module.exports = {
             "internal-ip",
             "@malagu/core",
             "@malagu/core/lib/common/container/dynamic-container",
+            "@malagu/core/lib/common/annotation/detached",
             "ora",
             "chalk",
-            "js-yaml"
+            "js-yaml",
+            "@malagu/react/lib/browser"
         ],
     }
 }
