@@ -24,6 +24,7 @@ module.exports = {
             "ora",
             "chalk",
             "js-yaml",
+            "jexl",
             "@malagu/react/lib/browser",
             "reflect-metadata",
             "inversify-binding-decorators",
