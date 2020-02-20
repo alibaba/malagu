@@ -16,10 +16,13 @@ module.exports = {
             "@malagu/core",
             "@malagu/core/lib/common/container/dynamic-container",
             "@malagu/core/lib/common/annotation/detached",
+            "@malagu/core/lib/common/utils/proxy-util",
+            "inversify",
             "ora",
             "chalk",
             "js-yaml",
-            "@malagu/react/lib/browser"
+            "@malagu/react/lib/browser",
+            "reflect-metadata"
         ],
     }
 }

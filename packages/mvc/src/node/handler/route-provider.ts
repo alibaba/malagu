@@ -20,7 +20,8 @@ export class RouteProviderImpl implements RouteProvider {
     }
 
     async provide(): Promise<Route> {
-        return await this.routeDefered.promise;
+        const result = await this.routeDefered.promise;
+        return result;
     }
 
 }
