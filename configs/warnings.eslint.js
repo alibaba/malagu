@@ -28,7 +28,8 @@ module.exports = {
             "@malagu/react/lib/browser",
             "reflect-metadata",
             "inversify-binding-decorators",
-            "url-join"
+            "url-join",
+            "express"
         ],
     }
 }

@@ -16,7 +16,8 @@ export class CookieSessionStore implements SessionStore {
     async get(id: string): Promise<Session | undefined> {
         const value = Context.getCookies().get(this.sessionOptions.sessionKey, this.sessionOptions);
         if (value) {
-            return await this.sessionStrategy.create(JSON.parse(Buffer.from(value, 'base64').toString('utf8')));
+            const result = await this.sessionStrategy.create(JSON.parse(Buffer.from(value, 'base64').toString('utf8')));
+            return result;
         }
     }
 
