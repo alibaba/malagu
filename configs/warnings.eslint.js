@@ -30,7 +30,9 @@ module.exports = {
             "inversify-binding-decorators",
             "url-join",
             "express",
-            "@phosphor/messaging"
+            "@phosphor/messaging",
+            "@malagu/cli",
+            "fs-extra"
         ],
     }
 }
