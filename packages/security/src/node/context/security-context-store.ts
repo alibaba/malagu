@@ -14,8 +14,7 @@ export class SessionSecurityContextStore implements SecurityContextStore {
     async load(): Promise<SecurityContext> {
         const context = Context.getSession()[this.options.contextKey];
         if (!context) {
-            const result = await this.securityContextStrategy.create();
-            return result;
+            return this.securityContextStrategy.create();
         }
         return context;
     }
