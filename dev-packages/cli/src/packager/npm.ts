@@ -98,10 +98,10 @@ export class NPM {
         return lockfile;
     }
 
-    async install(cwd: string) {
+    install(cwd: string) {
         const command = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
         const args = ['install'];
-        await spawnProcess(command, args, { cwd, stdio: 'inherit' });
+        return spawnProcess(command, args, { cwd, stdio: 'inherit' });
     }
 
     prune(cwd: string) {

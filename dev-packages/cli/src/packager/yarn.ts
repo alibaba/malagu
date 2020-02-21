@@ -94,7 +94,7 @@ export class Yarn {
         return replacements.reduce((__, replacement) => __.replace(replacement.oldRef, replacement.newRef), lockfile);
     }
 
-    async install(cwd: string, packagerOptions: any) {
+    install(cwd: string, packagerOptions: any) {
         const command = /^win/.test(process.platform) ? 'yarn.cmd' : 'yarn';
         const args = ['install', '--frozen-lockfile', '--non-interactive'];
 
@@ -102,7 +102,7 @@ export class Yarn {
         if (packagerOptions.ignoreScripts) {
             args.push('--ignore-scripts');
         }
-        await spawnProcess(command, args, { cwd, stdio: 'inherit' });
+        return spawnProcess(command, args, { cwd, stdio: 'inherit' });
     }
 
     // "Yarn install" prunes automatically
