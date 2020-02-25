@@ -21,11 +21,13 @@ export class LoggerImpl implements Logger {
     constructor(
         @Value(LOGGER_CONFIG) protected readonly config: any
     ) {
-        this.instance.error = log.error;
-        this.instance.warn = log.warn;
-        this.instance.info = log.info;
-        this.instance.debug = log.debug;
-        this.instance.verbose = log.trace;
+        this.instance = {
+            error: log.error,
+            warn: log.warn,
+            info: log.info,
+            debug: log.debug,
+            verbose: log.trace
+        };
 
         if (config.level) {
             log.setDefaultLevel(config.level);
