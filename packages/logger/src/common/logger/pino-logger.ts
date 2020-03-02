@@ -22,11 +22,11 @@ export class PinoLogger implements Logger {
         this.logger = pino({ ...pinoConfig, ...pinoConfig1 }, destinationConfig);
     }
 
-    public getLogger() {
+    public getRawLogger() {
         return this.logger;
     }
 
-    messagePrefix() {
+    protected getMessagePrefix() {
         if (Context.getCurrent()) {
             const traceId = Context.getTraceId();
             const path = Context.getRequest().path;
@@ -37,23 +37,23 @@ export class PinoLogger implements Logger {
         return '';
     }
 
-    error(message: string, prefix = this.messagePrefix()) {
+    error(message: string, prefix = this.getMessagePrefix()) {
         this.logger.error(`${prefix} ${message}`);
     }
 
-    warn(message: string, prefix = this.messagePrefix()) {
+    warn(message: string, prefix = this.getMessagePrefix()) {
         this.logger.warn(`${prefix} ${message}`);
     }
 
-    info(message: string, prefix = this.messagePrefix()) {
+    info(message: string, prefix = this.getMessagePrefix()) {
         this.logger.info(`${prefix} ${message}`);
     }
 
-    debug(message: string, prefix = this.messagePrefix()) {
+    debug(message: string, prefix = this.getMessagePrefix()) {
         this.logger.debug(`${prefix} ${message}`);
     }
 
-    verbose(message: string, prefix = this.messagePrefix()) {
+    verbose(message: string, prefix = this.getMessagePrefix()) {
         this.logger.trace(`${prefix} ${message}`);
     }
 }
