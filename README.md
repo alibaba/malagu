@@ -1,4 +1,4 @@
-# Malagu
+# Malagu ([https://github.com/cellbang/malagu](https://github.com/cellbang/malagu))*
 
 Malagu is a serverless First, scalable and componentized application framework developed by TypeScript.
 
