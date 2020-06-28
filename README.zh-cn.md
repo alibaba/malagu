@@ -1,4 +1,4 @@
-# Malagu
+# Malagu*([https://github.com/cellbang/malagu](https://github.com/cellbang/malagu))*
 Malagu 是基于 TypeScript 的 Serverless First、可扩展和组件化的应用框架。
 
 *其他语言版本：[English](README.md)*
