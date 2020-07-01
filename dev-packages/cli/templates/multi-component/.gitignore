@@ -2,6 +2,7 @@
 node_modules
 /build
 lib
+.malagu
 *.log
 .idea
 .metadata
@@ -12,11 +13,12 @@ lerna-debug.log
 coverage
 errorShots
 /browser-app
-/app
 .browser_modules
 **/docs/api
 package-backup.json
 .history
 .Trash-*
-packages/plugin/typedoc
-plugins
+gh-pages
+.vscode/ipch
+*.tsbuildinfo
+.eslintcache

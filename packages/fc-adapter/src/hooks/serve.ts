@@ -1,4 +1,5 @@
 import { ProfileProvider } from './profile-provider';
+import { ServeContext } from '@malagu/cli';
 
 export class Deferred<T> {
     resolve: (value?: T) => void;
@@ -10,13 +11,23 @@ export class Deferred<T> {
     });
 }
 
-export default (context: any) => {
+export default (context: ServeContext) => {
     const { app, entryContextProvider, pkg } = context;
     let initialized = false;
-    let funcHandler: any;
-    let deferred = new Deferred<void>();
+    let init: any;
+    let handler: any;
+    let initDeferred = new Deferred<void>();
+    const compileDeferred = new Deferred<void>();
     const type = pkg.backendConfig.deployConfig.type;
-    console.log(`Serve ${type} type for function compute.`);
+    context.compiler.hooks.done.tap('FCAdapterServe', () => {
+        entryContextProvider().then(obj => {
+            init = obj.init;
+            handler = obj.handler;
+            initialized = false;
+            compileDeferred.resolve();
+        });
+    });
+    console.log(`Serve ${type} type for function compute`);
     if (type !== 'http') {
         app.use((req: any, res: any, next: any) => {
             req.rawBody = '';
@@ -31,13 +42,15 @@ export default (context: any) => {
     }
     const doHandler = (req: any, res: any, ctx: any) => {
         if (type === 'http') {
-            funcHandler(req, res, ctx);
+            handler(req, res, ctx);
         } else if (type === 'event') {
-            funcHandler(req.rawBody, ctx, getCallback(res, type));
+            handler(req.rawBody, ctx, getCallback(res, type));
         } else {
-            funcHandler(JSON.stringify({
+            handler(JSON.stringify({
                 headers: req.headers,
-                body: req.rawBody
+                body: req.rawBody,
+                method: req.method,
+                path: req.path
             }), ctx, getCallback(res, type));
         }
     };
@@ -46,27 +59,23 @@ export default (context: any) => {
         res.header('Access-Control-Allow-Origin', '*');
         res.header('Access-Control-Allow-Credentials', 'true');
         const ctx = {
-            credentials: new ProfileProvider().provide(true)
+            credentials: await new ProfileProvider().provide(true)
         };
+        await compileDeferred.promise;
         if (!initialized) {
+            initDeferred = new Deferred<void>();
             initialized = true;
-            deferred = new Deferred<void>();
-            const { init, handler } = entryContextProvider();
-
-            funcHandler = handler;
             await init(ctx, (err: any) => {
                 const callback = getCallback(res, type);
                 if (err) {
                     callback(err);
                 } else {
-                    deferred.resolve();
+                    initDeferred.resolve();
                 }
             });
-            context.compiler.hooks.done.tap('FCAdapterServe', () => initialized = false);
-
         }
-        await deferred.promise;
-        doHandler(req, res, context);
+        await initDeferred.promise;
+        doHandler(req, res, ctx);
 
     });
 

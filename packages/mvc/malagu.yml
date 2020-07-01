@@ -1,0 +1,8 @@
+malagu: 
+  mvc: 
+    path: /*
+    defaultViewName: json
+  mustache:
+    cache: false
+    baseViewDir: assets/views
+    

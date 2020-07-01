@@ -1,6 +1,6 @@
 import { Component, Value, Autowired } from '@malagu/core';
 import { SecurityContextStore, SecurityContext, SecurityContextStrategy } from './context-protocol';
-import { Context } from '@malagu/core/lib/node';
+import { Context } from '@malagu/web/lib/node';
 
 @Component(SecurityContextStore)
 export class SessionSecurityContextStore implements SecurityContextStore {
@@ -14,7 +14,7 @@ export class SessionSecurityContextStore implements SecurityContextStore {
     async load(): Promise<SecurityContext> {
         const context = Context.getSession()[this.options.contextKey];
         if (!context) {
-            return await this.securityContextStrategy.create();
+            return this.securityContextStrategy.create();
         }
         return context;
     }

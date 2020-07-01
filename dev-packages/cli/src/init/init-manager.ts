@@ -1,10 +1,13 @@
 import { resolve } from 'path';
 import { existsSync, copy, readJSON, writeJSON } from 'fs-extra';
 const inquirer = require('inquirer');
-import request = require('request-promise');
 import { templates } from './templates';
 import { spawnSync } from 'child_process';
 import { HookExecutor } from '../hook/hook-executor';
+import { ContextUtils, HookContext } from '../context';
+import * as ora from 'ora';
+import axios from 'axios';
+import { getPackager } from '../packager';
 const chalk = require('chalk');
 
 inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'));
@@ -21,14 +24,16 @@ export interface Template {
 export class InitManager {
 
     protected source: any[];
+    protected name: string;
     protected location: string;
+    protected hookContext: HookContext;
     constructor(protected readonly context: any) {
 
     }
 
     async output(): Promise<void> {
-        await this.checkOutputDir();
         await this.selectTemplate();
+        await this.checkOutputDir();
         await this.doOutput();
     }
 
@@ -40,19 +45,32 @@ export class InitManager {
     }
 
     async install(): Promise<void> {
-        spawnSync('yarn', ['install'], { cwd: this.outputDir, stdio: 'inherit' });
+        const ctx = await HookContext.create(this.context.program, {}, this.outputDir, true);
+        const packagerId = ctx.pkg.rootConfig.malagu.packager;
+        await getPackager(packagerId).install(this.outputDir, {});
     }
 
     async executeHooks(): Promise<void> {
-        process.chdir(this.outputDir);
-        await new HookExecutor().executeInitHooks();
+        const outputDir = this.outputDir;
+        await new HookExecutor().executeInitHooks(await ContextUtils.createInitContext(await this.getHookContext()));
+        console.log(chalk`{bold.green Success!} Initialized "${ this.name }" example in {bold.blue ${outputDir}}.`);
+        process.exit(0);
+    }
+
+    protected async getHookContext(): Promise<HookContext> {
+        if (!this.hookContext) {
+            this.hookContext = await HookContext.create(this.context.program, {}, this.outputDir);
+            this.hookContext.name = this.context.name;
+            this.hookContext.outputDir = this.context.outputDir;
+        }
+        return this.hookContext;
     }
 
     protected get outputDir(): string {
         return resolve(process.cwd(), this.context.outputDir, this.context.name);
     }
 
-    protected async checkOutputDir() {
+    protected async checkOutputDir(): Promise<void> {
         if (existsSync(this.outputDir)) {
             const answers = await inquirer.prompt([{
                 name: 'overwrite',
@@ -65,24 +83,24 @@ export class InitManager {
         }
     }
 
-    protected toOfficialTemplate(name: string, location: string) {
-        return { name: `${name} ${chalk.italic.gray('Official')}`, value: location };
+    protected toOfficialTemplate(name: string, location: string): any {
+        return { name: `${name} ${chalk.italic.gray('Official')}`, value: { location, name} };
     }
 
-    protected toThirdPartyTemplate(item: any) {
-        return { name: `${item.name} ${chalk.italic.gray(item.stargazers_count + '⭑')}`, value: item.clone_url};
+    protected toThirdPartyTemplate(item: any): any {
+        return { name: `${item.name} ${chalk.italic.gray(item.stargazers_count + '⭑')}`, value: { location: item.clone_url, name: item.name }};
     }
 
     protected async selectTemplate(): Promise<void> {
         const answers = await inquirer.prompt([{
-            name: 'location',
+            name: 'item',
             type: 'autocomplete',
             message: 'Select a template to init',
             source: async (answersSoFar: any, input: string) => {
                 if (!this.source) {
+                    const spinner = ora({ text: 'loading...', discardStdin: false }).start();
                     const options = {
-                        uri: SEARCH_TEMPLATE_REPO_URI,
-                        json: true,
+                        url: SEARCH_TEMPLATE_REPO_URI,
                         timeout: 5000,
                         headers: {
                             'User-Agent': 'Malagu CLI'
@@ -90,21 +108,25 @@ export class InitManager {
                     };
                     const officialTemplates = Object.keys(templates).map(key => this.toOfficialTemplate(key, templates[key]));
                     try {
-                        const { items } = await request(options);
+                        const { items } = await axios.request(options);
                         const thirdPartyTemplates = items.map((item: any) => this.toThirdPartyTemplate(item));
                         this.source = [...officialTemplates, ...thirdPartyTemplates];
                     } catch (error) {
                         this.source = officialTemplates;
                         return this.source;
+                    } finally {
+                        spinner.stop();
                     }
                 }
                 return this.source.filter(item => !input || item.name.toLowerCase().includes(input.toLowerCase()));
             }
         }]);
-        this.location = answers.location;
+        this.name = answers.item.name;
+        this.context.name = this.context.name || answers.item.name;
+        this.location = answers.item.location;
     }
 
-    protected isLocalTemplate() {
+    protected isLocalTemplate(): boolean {
         return !this.location.startsWith('http');
     }
 
@@ -112,18 +134,18 @@ export class InitManager {
         return this.location.replace(PLACEHOLD, resolve(__dirname, '..', '..', 'templates'));
     }
 
-    protected async doOutput() {
+    protected async doOutput(): Promise<void> {
         if (this.isLocalTemplate()) {
             await this.outputLocalTemplate();
         } else {
             this.outputRemoteTempate();
         }
     }
-    protected async outputLocalTemplate() {
+    protected async outputLocalTemplate(): Promise<void> {
         await copy(this.realLocation, this.outputDir);
     }
 
-    protected outputRemoteTempate() {
+    protected outputRemoteTempate(): void {
         spawnSync('git', ['clone', '--depth=1', this.location, this.outputDir], { stdio: 'inherit' });
     }
 }

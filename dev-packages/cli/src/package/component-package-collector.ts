@@ -1,16 +1,21 @@
 import { readJsonFile } from './json-file';
-import { NodePackage, PublishedNodePackage } from './npm-registry';
-import { ComponentPackage, RawComponentPackage } from './component-package';
+import { NodePackage } from './npm-registry';
+import { ComponentPackage, RawComponentPackage } from './package-protocol';
+import { ApplicationPackage } from './application-package';
+import { ComponentPackageLoader } from './component-config-loader';
 
 export class ComponentPackageCollector {
 
     protected readonly sorted: ComponentPackage[] = [];
     protected readonly visited = new Map<string, boolean>();
+    protected componentPackageLoader: ComponentPackageLoader;
 
     constructor(
-        protected readonly componentPackageFactory: (raw: PublishedNodePackage) => ComponentPackage,
-        protected readonly resolveModule: (modulePath: string) => string
-    ) { }
+        protected readonly pkg: ApplicationPackage,
+        protected readonly mode: string[]
+    ) {
+        this.componentPackageLoader = new ComponentPackageLoader(pkg);
+    }
 
     protected root: NodePackage;
     collect(pck: NodePackage): ComponentPackage[] {
@@ -23,7 +28,7 @@ export class ComponentPackageCollector {
         if (!pck.dependencies) {
             return;
         }
-        // tslint:disable-next-line:forin
+        // eslint-disable-next-line guard-for-in
         for (const dependency in pck.dependencies) {
             const versionRange = pck.dependencies[dependency]!;
             this.collectPackage(dependency, versionRange);
@@ -46,7 +51,7 @@ export class ComponentPackageCollector {
 
         let packagePath: string | undefined;
         try {
-            packagePath = this.resolveModule(name + '/package.json');
+            packagePath = this.pkg.resolveModule(name + '/package.json');
         } catch (error) {
             console.warn(`Failed to resolve module: ${name}`);
         }
@@ -56,7 +61,9 @@ export class ComponentPackageCollector {
         const pck: NodePackage = readJsonFile(packagePath);
         if (RawComponentPackage.is(pck)) {
             pck.version = versionRange;
-            const componentPackage = this.componentPackageFactory(pck);
+            pck.malaguComponent = {} as any;
+            this.componentPackageLoader.load(pck, this.mode);
+            const componentPackage = this.pkg.newComponentPackage(pck);
             this.collectPackagesWithParent(pck, componentPackage);
             this.sorted.push(componentPackage);
         }

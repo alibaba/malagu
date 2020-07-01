@@ -1,6 +1,6 @@
-import { Context, AttributeScope } from '@malagu/core/lib/node';
+import { Context, AttributeScope } from '@malagu/web/lib/node';
 import { Authentication } from '../authentication';
-import { SESSION_MIDDLEWARE_PRIORITY } from '@malagu/core/lib/node/session/session-protocol';
+import { SESSION_MIDDLEWARE_PRIORITY } from '@malagu/web/lib/node/session/session-protocol';
 
 export const SECURITY_CONTEXT_MIDDLEWARE_PRIORITY = SESSION_MIDDLEWARE_PRIORITY - 100;
 export const CURRENT_SECURITY_CONTEXT_REQUEST_KEY = 'CurrentSecurityContextRequest';
@@ -23,7 +23,7 @@ export interface SecurityContextStrategy {
 
 export namespace SecurityContext {
 
-    export function setCurrent(context: SecurityContext) {
+    export function setCurrent(context: SecurityContext | undefined ) {
         Context.setAttr(CURRENT_SECURITY_CONTEXT_REQUEST_KEY, context);
     }
 

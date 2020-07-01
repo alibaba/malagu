@@ -1,17 +1,20 @@
 {
   "name": "@malagu/fc-adapter",
-  "version": "0.0.1",
+  "version": "0.0.19",
   "description": "",
-  "main": "lib/common/index.js",
-  "typings": "lib/common/index.d.ts",
+  "main": "lib/node/index.js",
+  "typings": "lib/node/index.d.ts",
   "dependencies": {
     "@alicloud/cloudapi": "^1.1.0",
     "@alicloud/fc2": "^2.1.1",
-    "@alicloud/pop-core": "^1.7.6",
     "@alicloud/ram": "^1.0.0",
-    "@malagu/cli": "^0.0.1",
-    "@malagu/core": "^0.0.1",
-    "@webserverless/fc-browser-sdk": "^0.1.1",
+    "@malagu/cli": "^0.0.19",
+    "@malagu/web": "^0.0.19",
+    "ali-oss": "^6.1.1",
+    "co": "^4.6.0",
+    "co-defer": "^1.0.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
     "fs-extra": "^8.1.0",
     "inquirer": "^6.5.1",
     "jszip": "^3.2.2",
@@ -34,7 +37,9 @@
   "homepage": "https://github.com/muxiangqiu/malagu",
   "files": [
     "lib",
-    "src"
+    "src",
+    "malagu.yml",
+    "malagu-remote.yml"
   ],
   "scripts": {
     "prepare": "yarn run clean && yarn run build",
@@ -44,35 +49,8 @@
     "test": "malaguext test",
     "docs": "malaguext docs"
   },
-  "malaguComponent": {
-    "config": {
-      "malagu": {
-        "server": {
-          "endpoint": "http://localhost:{port}"
-        },
-        "core": {
-          "serveHooks": false
-        }
-      },
-      "deployConfig": {
-        "type": "http"
-      },
-      "backend": {
-        "entry": {
-          "http": "lib/node/http-application-entry",
-          "api-gateway": "lib/node/api-gateway-application-entry"
-        }
-      }
-    },
-    "deployHooks": [
-      "lib/hooks/deploy"
-    ],
-    "serveHooks": [
-      "lib/hooks/serve"
-    ]
-  },
   "devDependencies": {
-    "@malagu/ext-scripts": "^0.0.1",
+    "@malagu/ext-scripts": "^0.0.19",
     "@types/inquirer": "^6.5.0",
     "@types/jszip": "^3.1.6"
   },

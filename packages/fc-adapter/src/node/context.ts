@@ -1,120 +1,109 @@
-import {  Context, Request, Response } from '@malagu/core/lib/node';
+import { HttpContext } from '@malagu/web/lib/node';
 import * as http from 'http';
 
 export type Callback = (err: Error | undefined, data: any) => void;
 
-export abstract class AbstractContext implements Context {
-    request: Request;
-    response: Response;
-}
+export function parseApiGatewayContext(event: string, context: any, callback: Callback) {
+    const e = JSON.parse(event);
+    const request = {
+        method: e.httpMethod || e.method,
+        path: e.path,
+        url: e.path,
+        connection: {} as any,
+        query: e.queryParameters || {},
+        headers: e.headers,
+        get body() {
+            const body = e.isBase64Encoded ? Buffer.from(e.body, 'base64').toString('utf8') : e.body;
+            if (e.headers['content-type'] === 'application/json') {
+                return JSON.parse(body);
+            }
+            return body;
+        }
 
-export class ApiGatewayContext extends AbstractContext {
-
-    _response: { [key: string]: any } = {
+    };
+    const res: { [key: string]: any } = {
         headers: {},
+        statusCode: 200,
         isBase64Encoded: false
     };
+    const response = {
+        setHeader(name: string, value: number | string | string[]): void {
+            res.headers[name] = value;
+        },
 
-    constructor(public event: string, public context: any, public callback: Callback) {
-        super();
-        const e = JSON.parse(event);
-        this.request = {
-            method: e.method,
-            path: e.path,
-            url: e.path,
-            query: e.queryParameters || {},
-            headers: e.headers,
-            get body() {
-                const body = e.isBase64Encoded ? Buffer.from(e.body, 'base64').toString('utf8') : e.body;
-                if (e.headers['content-type'] === 'application/json') {
-                    return JSON.parse(body);
-                }
-            }
+        getHeader(name: string): number | string | string[] | undefined {
+            return this.getHeaders()[name];
+        },
 
-        };
-        const res = this._response;
-        this.response = {
-            setHeader(name: string, value: number | string | string[]): void {
-                res.headers[name] = value;
-            },
+        getHeaders(): http.OutgoingHttpHeaders {
+            return res.headers;
+        },
 
-            getHeader(name: string): number | string | string[] | undefined {
-                return this.getHeaders()[name];
-            },
+        get statusCode(): number {
+            return res.statusCode || 200;
+        },
 
-            getHeaders(): http.OutgoingHttpHeaders {
-                return res.headers;
-            },
+        finished: false,
 
-            get statusCode(): number {
-                return res.statusCode;
-            },
+        set statusCode(statusCode: number) {
+            res.statusCode = statusCode;
+        },
 
-            finished: false,
+        end: (chunk: any, encoding?: string, cb?: Function): void => {
+            callback(undefined, {
+                ...res,
+                body: chunk
+            });
+        }
 
-            set statusCode(statusCode: number) {
-                res.statusCode = statusCode;
-            },
+    };
 
-            end: (chunk: any, encoding?: string, cb?: Function): void => {
-                this.callback(undefined, {
-                    ...res,
-                    body: chunk
-                });
-            }
-
-        };
-
-    }
-
-    async handleError(err: Error): Promise<void> {
-        this.callback(err, undefined);
-    }
-
-    async handleMessage(message: string): Promise<void> {
-        this.callback(undefined, {
-            isBase64Encoded: false,
-            statusCode: 200,
-            body: message
-        });
-    }
+    const ctx = new HttpContext(request, response);
+    (ctx as any).event = event;
+    (ctx as any).context = context;
+    (ctx as any).callback = callback;
+    return ctx;
 }
 
-export class HttpTriggerContext extends AbstractContext {
-
-    constructor(req: any, res: any, public context: any) {
-        super();
-        this.request = req;
-        if (req.headers['content-type'] === 'application/json') {
-            this.request.body = JSON.parse(this.request.body);
-        }
-        this.response = {
-            setHeader(name: string, value: number | string | string[]): void {
-                res.setHeader(name, value);
-            },
-
-            getHeader(name: string): number | string | string[] | undefined {
-                return res.getHeader ? res.getHeader(name) : this.getHeaders()[name];
-            },
-
-            getHeaders(): http.OutgoingHttpHeaders {
-                return res.headers || res.getHeaders();
-            },
-
-            get statusCode(): number {
-                return res.statusCode;
-            },
-
-            set statusCode(statusCode: number) {
-                res.statusCode = statusCode;
-            },
-
-            finished: false,
-
-            end(chunk: any, encoding?: string, cb?: Function): void {
-                this.finished = true;
-                res.send(chunk);
-            }
-        };
+export function ParseHttpTriggerContext(req: any, res: any, context: any) {
+    const request = req;
+    if (req.queries) {
+        request.query = req.queries;
+        request.connection = {} as any;
     }
+    if (req.headers['content-type'] === 'application/json') {
+        request.body = request.body ? JSON.parse(request.body) : request.body;
+    }
+    const response = {
+        setHeader(name: string, value: number | string | string[]): void {
+            res.setHeader(name, value);
+        },
+
+        getHeader(name: string): number | string | string[] | undefined {
+            return res.getHeader ? res.getHeader(name) : (this.getHeaders()[name] ? this.getHeaders()[name] : res.headersMap[name]);
+        },
+
+        getHeaders(): http.OutgoingHttpHeaders {
+            return res.headers || res.getHeaders();
+        },
+
+        get statusCode(): number {
+            return res.statusCode;
+        },
+
+        set statusCode(statusCode: number) {
+            res.statusCode = statusCode;
+        },
+
+        finished: false,
+
+        end(chunk: any, encoding?: string, cb?: Function): void {
+            this.finished = true;
+            // eslint-disable-next-line no-null/no-null
+            res.send(chunk === undefined || chunk === null ? '' : chunk);
+        }
+    };
+    const ctx = new HttpContext(request, response);
+    (ctx as any).context = context;
+    return ctx;
 }

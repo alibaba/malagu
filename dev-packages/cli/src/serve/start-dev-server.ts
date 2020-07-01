@@ -12,8 +12,10 @@ import * as FriendlyErrorsWebpackPlugin from 'friendly-errors-webpack-plugin';
 import { getDevSuccessInfo } from '../webpack/utils';
 const webpackDevMiddleware = require('webpack-dev-middleware');
 import { ExecuteServeHooks } from './serve-manager';
-import { BACKEND_TARGET } from '../constants';
-const decache = require('decache');
+import { BACKEND_TARGET, FRONTEND_TARGET } from '../constants';
+import * as delay from 'delay';
+import { ConfigurationContext } from '../context';
+const clearModule = require('clear-module');
 
 let server: any;
 
@@ -38,15 +40,23 @@ function getEntryPath(configuration: webpack.Configuration) {
 function attachBackendServer(executeServeHooks: ExecuteServeHooks, configuration: webpack.Configuration, options: any, log: any, c?: webpack.Compiler) {
     const compiler = c || createCompiler(configuration, options, log);
     if (!c) {
-        server.app.use(webpackDevMiddleware(compiler, { fs: compiler.outputFileSystem }));
+        server.app.use(webpackDevMiddleware(compiler, { fs: compiler.outputFileSystem, logLevel: 'error' }));
+        new FriendlyErrorsWebpackPlugin({
+            compilationSuccessInfo: {
+                messages: getDevSuccessInfo((configuration as any).devServer, configuration.name!),
+                notes: []
+            }
+        }).apply(compiler);
     }
-    const entryContextProvider = () => {
+    const entryContextProvider = async () => {
         const entryPath = getEntryPath(configuration);
-        for (const key of Object.keys(require.cache)) {
-            decache(key);
+        clearModule(entryPath);
+        while (true) {
+            if (fs.existsSync(entryPath)) {
+                return require(entryPath);
+            }
+            await delay(200);
         }
-        const entry = require(entryPath);
-        return entry;
     };
     executeServeHooks(server.listeningApp, server.app, compiler, entryContextProvider);
 
@@ -54,15 +64,17 @@ function attachBackendServer(executeServeHooks: ExecuteServeHooks, configuration
 
 function doStartDevServer(configurations: webpack.Configuration[], options: any, executeServeHooks: ExecuteServeHooks) {
     const log = createLogger(options);
-
-    const [ configuration, backendCnfiguration ] = configurations;
-
-    let compiler: webpack.Compiler;
-
-    compiler = createCompiler(configuration, options, log);
+    const frontendConfiguration = ConfigurationContext.getConfiguration(FRONTEND_TARGET , configurations);
+    const backendConfiguration = ConfigurationContext.getConfiguration(BACKEND_TARGET , configurations);
+    const configuration = frontendConfiguration || backendConfiguration;
+    if (!configuration) {
+        log.error(colors.error(options.stats.colors, 'No suitable target found.'));
+        process.exit(-1);
+    }
+    const compiler = createCompiler(configuration, options, log);
     new FriendlyErrorsWebpackPlugin({
         compilationSuccessInfo: {
-            messages: getDevSuccessInfo((configuration as any).devServer),
+            messages: getDevSuccessInfo((configuration as any).devServer, configuration.name!),
             notes: []
         }
     }).apply(compiler);
@@ -70,8 +82,8 @@ function doStartDevServer(configurations: webpack.Configuration[], options: any,
     try {
         server = new Server(compiler, options, log);
         setupExitSignals(server);
-        if (backendCnfiguration) {
-            attachBackendServer(executeServeHooks, backendCnfiguration, options, log);
+        if (frontendConfiguration && backendConfiguration) {
+            attachBackendServer(executeServeHooks, backendConfiguration, options, log);
         } else if (configuration.name === BACKEND_TARGET) {
             attachBackendServer(executeServeHooks, configuration, options, log, compiler);
         }

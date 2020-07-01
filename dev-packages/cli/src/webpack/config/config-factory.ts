@@ -1,26 +1,60 @@
 
 import * as webpack from 'webpack';
 import { BaseConfigFactory } from './base-config-factory';
-import { FrontendConfigFactory } from './frontend-config-factory';
-import { BackendConfigFactory } from './backend-config-factory';
-import { Context } from './context';
+import { HookContext } from '../../context';
 import * as merge from 'webpack-merge';
-const chalk = require('chalk');
+import { HookExecutor } from '../../hook/hook-executor';
+import { EntryConfigFactory } from './entry-config-factory';
+import { OutputConfigFactory } from './output-config-factory';
+import { DevServerConfigFactory } from './dev-server-config-factory';
+import { CopyWepackPluginConfigFactory, EnvironmentPluginConfigFactory,
+    ForkTsCheckerWebpackPluginConfigFactory, HardSourceWebpackPluginConfigFactory,
+    HtmlWebpackTagsPluginConfigFactory, HtmlWebpackPluginConfigFactory, CleanWebpackPluginConfigFactory } from './plugin-config-factory';
+import { FRONTEND_TARGET, BACKEND_TARGET } from '../../constants';
+import { MalaguYamlConfigFactory } from './malagu-yaml-config-factory';
+import { ComponentConfigFactory } from './component-config-factory';
+import { support } from '../utils';
 
 export class ConfigFactory {
-    async create(context: Context): Promise<webpack.Configuration[]> {
+    async create(context: HookContext): Promise<webpack.Configuration[]> {
+        const { pkg } = context;
         const configurations = [];
-        const baseConfig = new BaseConfigFactory().create(context);
 
-        const configFactories = [new FrontendConfigFactory(),  new BackendConfigFactory()];
-        for (const configFactory of configFactories) {
-            if (configFactory.support(context)) {
-                const config = merge(baseConfig, configFactory.create(context));
-                const webpackHook = context.config.webpack || ((c: webpack.Configuration, ctx: Context) => config);
-                configurations.push(webpackHook(config, context));
-                console.log(chalk`malagu {green target} - ${ configurations[configurations.length - 1].name }`);
+        const targets = [ BACKEND_TARGET, FRONTEND_TARGET ];
+
+        const configFactories = [
+            new BaseConfigFactory(),
+            new EntryConfigFactory(),
+            new OutputConfigFactory(),
+            new DevServerConfigFactory(),
+            new CopyWepackPluginConfigFactory(),
+            new ForkTsCheckerWebpackPluginConfigFactory(),
+            new HardSourceWebpackPluginConfigFactory(),
+            new EnvironmentPluginConfigFactory(),
+            new ComponentConfigFactory(),
+            new MalaguYamlConfigFactory(),
+            new HtmlWebpackPluginConfigFactory(),
+            new HtmlWebpackTagsPluginConfigFactory(),
+            new CleanWebpackPluginConfigFactory()
+        ];
+
+        for (const target of targets) {
+            if (!support(pkg, target)) {
+                continue;
             }
+            let config = {};
+            for (const configFactory of configFactories) {
+                if (configFactory.support(context, target)) {
+                    config = merge(config, configFactory.create(config, context, target) as any);
+                }
+            }
+            configurations.push(config);
         }
+
+        await new HookExecutor().executeWebpackHooks({
+            ...context,
+            configurations
+        });
         return configurations;
     }
 }

@@ -1,8 +1,6 @@
 import { fluentProvide } from 'inversify-binding-decorators';
 import { interfaces } from 'inversify';
 import { METADATA_KEY } from '../constants';
-import { ConnectionHandler, NoOpConnectionHandler } from '../jsonrpc/handler';
-import { JsonRpcConnectionHandler } from '../jsonrpc/proxy-factory';
 import { MethodBeforeAdvice, AfterReturningAdvice, AfterThrowsAdvice } from '../aop/aop-protocol';
 
 export enum Scope {
@@ -12,28 +10,28 @@ export interface ComponentOption {
     id?: interfaces.ServiceIdentifier<any> | interfaces.ServiceIdentifier<any>[];
     scope?: Scope;
     rebind?: boolean;
-    rpc?: boolean;
     proxy?: boolean;
 }
 export namespace ComponentOption {
     export function is(options: any): options is ComponentOption {
-        return options && (options.id !== undefined || options.scope !== undefined || options.rebind !== undefined || options.proxy !== undefined);
+        return options && (options.id !== undefined || options.scope !== undefined ||
+            options.rebind !== undefined || options.proxy !== undefined);
     }
 }
 
 export interface ComponentDecorator {
-    (option?: interfaces.ServiceIdentifier<any> | ComponentOption): (target: any) => any;
+    (option?: interfaces.ServiceIdentifier<any> | interfaces.ServiceIdentifier<any>[] | ComponentOption): (target: any) => any;
 }
 
 export const Component =
     <ComponentDecorator>function (idOrOption?: interfaces.ServiceIdentifier<any> | interfaces.ServiceIdentifier<any>[] | ComponentOption): (target: any) => any {
-    const option = getComponentOption(idOrOption);
-    return (t: any) => {
-        applyComponentDecorator(option, t);
+        const option = getComponentOption(idOrOption);
+        return (t: any) => {
+            applyComponentDecorator(option, t);
+        };
     };
-};
 
-export function getComponentOption(idOrOption?: interfaces.ServiceIdentifier<any> | interfaces.ServiceIdentifier<any>[] | ComponentOption) {
+export function getComponentOption(idOrOption?: interfaces.ServiceIdentifier<any> | interfaces.ServiceIdentifier<any>[] | ComponentOption): ComponentOption {
     let option: ComponentOption = {};
 
     if (ComponentOption.is(idOrOption)) {
@@ -44,7 +42,7 @@ export function getComponentOption(idOrOption?: interfaces.ServiceIdentifier<any
     return option;
 }
 
-function doProxy (context: interfaces.Context, t: any) {
+function doProxy(context: interfaces.Context, t: any): ProxyConstructor {
     const proxy = new Proxy(t, {
         get: (target, method, receiver) => {
             const func = target[method];
@@ -53,25 +51,25 @@ function doProxy (context: interfaces.Context, t: any) {
                     try {
                         const beforeAdvices = context.container.getAll<MethodBeforeAdvice>(MethodBeforeAdvice) || [];
                         for (const advice of beforeAdvices) {
-                            await advice.before(method, args, target);
+                            await advice.before(method, args, t);
                         }
                         const returnValue = await func.apply(target, args);
                         const afterReturningAdvices = context.container.getAll<AfterReturningAdvice>(AfterReturningAdvice) || [];
                         for (const advice of afterReturningAdvices) {
-                            await advice.afterReturning(returnValue, method, args, target);
+                            await advice.afterReturning(returnValue, method, args, t);
                         }
                         return returnValue;
                     } catch (error) {
                         const afterThrowsAdvices = context.container.getAll<AfterThrowsAdvice>(AfterThrowsAdvice) || [];
                         for (const advice of afterThrowsAdvices) {
-                            await advice.afterThrows(error, method, args, target);
+                            await advice.afterThrows(error, method, args, t);
                         }
                         throw error;
                     }
                 };
             }
             return func;
-         }
+        }
     });
     proxy.target = t;
     t.proxyTarget = proxy;
@@ -83,7 +81,6 @@ export function applyComponentDecorator(option: ComponentOption, target: any): v
         id: target,
         scope: Scope.Singleton,
         rebind: false,
-        rpc: false,
         proxy: false
     };
     const opt = { ...defaultComponentOption, ...option };
@@ -114,17 +111,10 @@ export function applyComponentDecorator(option: ComponentOption, target: any): v
     }
     if (opt.rebind) {
         const metadata = true;
-        (Reflect as any).defineMetadata(
+        Reflect.defineMetadata(
             METADATA_KEY.rebind,
             metadata,
             target
         );
-    }
-
-    if (opt.rpc) {
-        fluentProvide(ConnectionHandler).inSingletonScope().onActivation(context => {
-            const t = context.container.get(id);
-            return new JsonRpcConnectionHandler(id.toString(), proxy => doProxy(context, t));
-        }).done(true)(NoOpConnectionHandler);
     }
 }

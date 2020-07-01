@@ -1,3 +1,7 @@
+import { ApplicationPackage } from '../package';
+import { FRONTEND_TARGET, BACKEND_TARGET } from '../constants';
+import * as path from 'path';
+
 const url = require('url');
 const ip = require('internal-ip');
 const chalk = require('chalk');
@@ -21,14 +25,14 @@ export function getUri(options: any) {
     });
 }
 
-export function getDevSuccessInfo(options: any): string[] {
+export function getDevSuccessInfo(options: any, name: string): string[] {
     const uri = getUri(options);
     const infos = [];
 
     if (options.socket) {
         infos.push(`Listening to socket at ${chalk.green(options.socket)}`);
     } else {
-        infos.push(`Project is running at ${chalk.green(uri)}`);
+        infos.push(`The ${chalk.yellow.bold(name)} is running at ${chalk.bold.green(uri)}`);
     }
 
     if (options.historyApiFallback) {
@@ -45,4 +49,35 @@ export function getDevSuccessInfo(options: any): string[] {
         );
     }
     return infos;
+}
+
+export function getWebpackConfig(pkg: ApplicationPackage, target: string) {
+    return getMalaguConfig(pkg, target).webpack || {};
+
+}
+
+export function getMalaguConfig(pkg: ApplicationPackage, target: string) {
+    return getConfig(pkg, target).malagu || {};
+}
+
+export function getConfig(pkg: ApplicationPackage, target: string) {
+    return pkg.getConfig(target) || {};
+}
+
+export function support(pkg: ApplicationPackage, target: string) {
+    const targets = pkg.getConfig(target).targets || [FRONTEND_TARGET, BACKEND_TARGET];
+    return (pkg as any)[`${target}Modules`].size > 0 && targets.includes(target);
+
+}
+
+export function getPort(pkg: ApplicationPackage, target: string, port?: number) {
+    if (port !== undefined) {
+        return port;
+    }
+    const server = getConfig(pkg, target).server || { port: 3000 };
+    return server.port;
+}
+
+export function getHomePath(pkg: ApplicationPackage, target: string = '') {
+    return path.resolve(pkg.projectPath, '.malagu', target);
 }
