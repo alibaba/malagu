@@ -5,7 +5,7 @@
   "main": "lib/common/index.js",
   "typings": "lib/common/index.d.ts",
   "dependencies": {
-    "@malagu/core": "next"
+    "@malagu/rpc": "latest"
   },
   "publishConfig": {
     "access": "public"
@@ -16,7 +16,8 @@
   "license": "MIT",
   "files": [
     "lib",
-    "src"
+    "src",
+    "malagu.yml"
   ],
   "scripts": {
     "prepare": "yarn run clean && yarn run build",
@@ -26,10 +27,8 @@
     "test": "malaguext test",
     "docs": "malaguext docs"
   },
-  "malaguComponent": {
-  },
   "devDependencies": {
-    "@malagu/ext-scripts": "next"
+    "@malagu/ext-scripts": "latest"
   },
   "nyc": {
     "extends": "../../configs/nyc.json"

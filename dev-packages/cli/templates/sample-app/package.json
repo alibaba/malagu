@@ -4,29 +4,25 @@
     "malagu-component"
   ],
   "version": "0.0.0",
+  "license": "MIT",
   "files": [
     "lib",
     "src"
   ],
   "dependencies": {
-    "@malagu/core": "next",
-    "@malagu/fc-adapter": "next",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6"
+    "@malagu/rpc": "latest",
+    "@malagu/fc-adapter": "latest",
+    "@malagu/react": "latest"
   },
   "devDependencies": {
-    "@malagu/cli": "next",
+    "@malagu/cli": "latest",
     "@types/react-dom": "^16.8.5",
-    "bufferutil": "^4.0.1",
-    "rimraf": "^2.6.3",
-    "typescript": "^3.5.3",
-    "utf-8-validate": "^5.0.2"
+    "rimraf": "^2.6.3"
   },
   "scripts": {
-    "prepare": "yarn run clean && yarn run build",
-    "clean": "rimraf lib dist",
-    "build": "tsc",
+    "clean": "rimraf lib dist .malagu",
+    "build": "malagu build",
     "start": "malagu serve",
-    "watch": "tsc -w"
+    "deploy": "malagu deploy"
   }
 }

@@ -1,0 +1,13 @@
+auto: false
+malagu:
+  logger:
+    level: 'info'
+frontend:
+  entry: lib/common/application/application-entry
+backend:
+  entry: lib/common/application/application-entry
+  malagu:
+    core:
+      validationPipeOptions:
+        detailedOutputDisabled: false
+        transformEnabled: true

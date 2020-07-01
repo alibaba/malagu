@@ -1,13 +1,21 @@
-import { container } from '@malagu/core/lib/common/dynamic-container';
-import { Dispatcher, Context } from '@malagu/core/lib/node';
-import { ApiGatewayContext, Callback } from './context';
-import { ContainerProvider } from '@malagu/core/lib/common/container-provider';
-import { Application } from '@malagu/core/lib/common/application-protocol';
+import { container } from '@malagu/core/lib/common/container/dynamic-container';
+import { ContainerProvider, Application } from '@malagu/core';
+import { Dispatcher, Context } from '@malagu/web/lib/node';
+import { parseApiGatewayContext, Callback } from './context';
+import { HttpContext } from '@malagu/web/lib/node';
+
+let startPromise: Promise<void>;
+
+async function start() {
+    const c = await container;
+    ContainerProvider.set(c);
+    return c.get<Application>(Application).start();
+}
 
 export async function init(context: any, callback: any) {
     try {
-        const c = await container;
-        await c.get<Application>(Application).start();
+        startPromise = start();
+        await startPromise;
         callback(undefined, '');
     } catch (err) {
         callback(err);
@@ -16,10 +24,15 @@ export async function init(context: any, callback: any) {
 
 export async function handler(event: string, context: any, callback: Callback) {
     try {
+        if (startPromise) {
+            await startPromise;
+        } else {
+            await start();
+        }
         const c = await container;
         ContainerProvider.set(c);
-        const dispatcher = c.get<Dispatcher<ApiGatewayContext>>(Dispatcher);
-        const apiGatewayContext = new ApiGatewayContext(event, context, callback);
+        const dispatcher = c.get<Dispatcher<HttpContext>>(Dispatcher);
+        const apiGatewayContext = parseApiGatewayContext(event, context, callback);
         Context.run(() => dispatcher.dispatch(apiGatewayContext));
     } catch (err) {
         callback(undefined, {

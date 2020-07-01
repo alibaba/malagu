@@ -1,37 +1,27 @@
 import * as paths from 'path';
 import { readJsonFile } from './json-file';
 import { NodePackage, PublishedNodePackage, sortByKey } from './npm-registry';
-import { Component, ComponentPackage } from './component-package';
+import { Component, ComponentPackage, Props, ApplicationLog, ApplicationPackageOptions, customizer, ApplicationModuleResolver } from './package-protocol';
 import { ComponentPackageCollector } from './component-package-collector';
-import { ApplicationProps } from './application-props';
-import { existsSync, readFileSync } from 'fs-extra';
 import mergeWith = require('lodash.mergewith');
-import yaml = require('js-yaml');
-import { FRONTEND_TARGET, BACKEND_TARGET } from '../constants';
+import { FRONTEND_TARGET, BACKEND_TARGET, CONFIG_FILE } from '../constants';
+import { ComponentPackageLoader } from './component-config-loader';
+import { ComponentPackageResolver } from './component-package-resolver';
+import { existsSync, readFileSync } from 'fs-extra';
 const chalk = require('chalk');
+import yaml = require('js-yaml');
+import { ModulePathBuilder } from './module-path-builder';
 
 // tslint:disable:no-implicit-dependencies
 
 // tslint:disable-next-line:no-any
-export type ApplicationLog = (message?: any, ...optionalParams: any[]) => void;
-export class ApplicationPackageOptions {
-    readonly projectPath: string;
-    readonly log?: ApplicationLog;
-    readonly error?: ApplicationLog;
-}
-
-export type ApplicationModuleResolver = (modulePath: string) => string;
-
-export function customizer(objValue: any, srcValue: any) {
-    if (Array.isArray(objValue)) {
-      return srcValue;
-    }
-  }
 
 export class ApplicationPackage {
     readonly projectPath: string;
     readonly log: ApplicationLog;
     readonly error: ApplicationLog;
+    protected componentPackageLoader = new ComponentPackageLoader(this);
+    protected componentPackageResolver = new ComponentPackageResolver(this);
 
     constructor(
         protected readonly options: ApplicationPackageOptions
@@ -41,165 +31,143 @@ export class ApplicationPackage {
         this.error = options.error || console.error.bind(console);
     }
 
-    protected _props: ApplicationProps | undefined;
-    get props(): ApplicationProps {
+    protected _props: Component | undefined;
+    get props(): Component {
         if (this._props) {
             return this._props;
         }
-        let props = mergeWith({}, ApplicationProps.DEFAULT, customizer);
+        let props = <Component>{};
         for (const componentPackage of this.componentPackages) {
             const component = componentPackage.malaguComponent;
             if (component) {
-                const { config } = component;
-                if (config) {
-                    props = mergeWith(props, config, customizer);
-                }
-            }
-        }
-
-        const appConfigPath = this.path('app.yml');
-        if (existsSync(appConfigPath)) {
-            const appConfig = yaml.safeLoad(readFileSync(appConfigPath, { encoding: 'utf8' }));
-            props = mergeWith(props, appConfig);
-        }
-
-        if (props.mode) {
-            const appConfigPathForMode = this.path(`app-${props.mode}.yml`);
-            if (existsSync(appConfigPathForMode)) {
-                const appConfigForMode = yaml.safeLoad(readFileSync(appConfigPathForMode, { encoding: 'utf8' }));
-                props = mergeWith(props, appConfigForMode);
+                props = mergeWith(props, component, customizer);
             }
         }
 
         return props;
     }
 
-    protected _frontendConfig: ApplicationProps | undefined;
-    get frontendConfig(): ApplicationProps {
-        if (this._frontendConfig) {
-            return this._frontendConfig;
+    protected _rootConfig: Props | undefined;
+    get rootConfig(): Props {
+        if (this._rootConfig) {
+            return this._rootConfig;
         }
-        const config = { ...this.props };
-        delete config.backend;
-        delete config.frontend;
-        return mergeWith(config, this.props.frontend, customizer);
+        if (existsSync(this.path(CONFIG_FILE))) {
+            this._rootConfig = yaml.load(readFileSync(this.path(CONFIG_FILE), { encoding: 'utf8' }));
+        }
+        if (this._rootConfig && !this._rootConfig.malagu) {
+            this._rootConfig.malagu = {};
+        }
+        return this._rootConfig || { malagu: {} };
     }
 
-    protected _backendConfig: ApplicationProps | undefined;
-    get backendConfig(): ApplicationProps {
-        if (this._frontendConfig) {
-            return this._frontendConfig;
+    getConfig(target: string): Props {
+        const self: any = this;
+        const configProperty = `_${target}Config`;
+        if (self[configProperty]) {
+            return self[configProperty];
         }
-        const config = { ...this.props };
+        let config = { ...this.props };
         delete config.backend;
         delete config.frontend;
-        return mergeWith(config, this.props.backend, customizer);
+        config = mergeWith(config, this.props[target], customizer);
+
+        let mode = config.mode || [];
+        if (!Array.isArray(mode)) {
+            mode = [mode];
+        }
+        config.mode = Array.from(new Set([...mode, ...this.options.mode]));
+
+        if (!this._frontendConfig && !this._backendConfig) {
+            for (const m of config.mode) {
+                console.log(chalk`malagu {bold.blue mode} - {bold ${m}}`);
+            }
+
+            for (const componentPackage of this.componentPackages) {
+                console.log(chalk`malagu {green.bold component} - ${ componentPackage.name }@${ componentPackage.version }`);
+            }
+        }
+
+        config.targets = config.targets || [FRONTEND_TARGET, BACKEND_TARGET];
+        const { targets } = config;
+        if (targets.includes(target)) {
+            console.log(chalk`\nmalagu {yellow.bold target} - {bold ${target}}`);
+            for (const componentPackage of self._componentPackages) {
+                const malaguComponent = <Component>componentPackage.malaguComponent;
+                for (const modulePath of [...malaguComponent[target].modules || []]) {
+                    console.log(chalk`malagu {cyan.bold module} - ${componentPackage.name}/${ modulePath }`);
+                }
+            }
+        }
+        self[configProperty] = config;
+        return config;
     }
 
-    protected _pkg: NodePackage | undefined;
-    get pkg(): NodePackage {
-        if (this._pkg) {
-            return this._pkg;
+    protected _frontendConfig: Props | undefined;
+    get frontendConfig(): Props {
+        return this.getConfig(FRONTEND_TARGET);
+    }
+
+    protected _backendConfig: Props | undefined;
+    get backendConfig(): Props {
+        return this.getConfig(BACKEND_TARGET);
+    }
+
+    protected _pkg: PublishedNodePackage | undefined;
+    get pkg(): PublishedNodePackage {
+        if (!this._pkg) {
+            this._pkg = readJsonFile(this.packagePath);
+            this._pkg!.name = this._pkg!.name || paths.basename(this.projectPath);
+            this._pkg!.name = this._pkg!.name || 'latest';
         }
-        return this._pkg = readJsonFile(this.packagePath);
+        return this._pkg!;
     }
 
     protected _frontendModules: Map<string, string> | undefined;
     protected _backendModules: Map<string, string> | undefined;
+    protected _frontendAssets: Map<string, string> | undefined;
+    protected _backendAssets: Map<string, string> | undefined;
     protected _initHookModules: Map<string, string> | undefined;
+    protected _buildHookModules: Map<string, string> | undefined;
     protected _serveHookModules: Map<string, string> | undefined;
     protected _deployHookModules: Map<string, string> | undefined;
     protected _componentPackages: ComponentPackage[] | undefined;
+    protected _webpackHookModules: Map<string, string> | undefined;
+    protected _configHookModules: Map<string, string> | undefined;
+    protected _rootComponentPackage: ComponentPackage;
+
+    protected rootComponentPackage() {
+        if (!this._rootComponentPackage) {
+            this.pkg.malaguComponent = {};
+            this.componentPackageLoader.load(this.pkg, this.options.mode);
+            this._rootComponentPackage = this.newComponentPackage(this.pkg);
+        }
+        return this._rootComponentPackage;
+    }
 
     /**
      * Component packages in the topological order.
      */
     get componentPackages(): ReadonlyArray<ComponentPackage> {
         if (!this._componentPackages) {
+            let modeForConfig = this.rootComponentPackage().malaguComponent!.mode;
+            modeForConfig = Array.isArray(modeForConfig) ? modeForConfig : modeForConfig ? [modeForConfig] : [];
+            const modeForOption = this.options.mode;
+            const merged = Array.from(new Set<string>([...modeForConfig, ...modeForOption]));
+
             const collector = new ComponentPackageCollector(
-                raw => this.newComponentPackage(raw),
-                this.resolveModule
+                this,
+                merged
             );
             this._componentPackages = collector.collect(this.pkg);
+            this._componentPackages.push(this.rootComponentPackage());
             for (const componentPackage of this._componentPackages) {
-                console.log(chalk`malagu {green component} - ${ componentPackage.name }@${ componentPackage.version }`);
-                const malaguComponent = <Component>componentPackage.malaguComponent;
-                if (!malaguComponent.config || malaguComponent.config && malaguComponent.config.auto !== false) {
-                    this.addModuleIfExists(componentPackage.name, malaguComponent, true);
-                }
-                this.parseEntry(componentPackage.name, malaguComponent, true);
-            }
-            if (!(this.pkg.private === true && this.pkg.workspaces)) {
-                const malaguComponent = { ...this.pkg.malaguComponent };
-                const name = this.pkg.name || paths.basename(this.projectPath);
-                this.addModuleIfExists(name, malaguComponent, false);
-                this.parseEntry(name, malaguComponent, false);
-                this.pkg.malaguComponent = malaguComponent;
-                this._componentPackages.push(<ComponentPackage>this.pkg);
+                this.componentPackageResolver.resolve(componentPackage);
             }
 
-            for (const componentPackage of this._componentPackages) {
-                const malaguComponent = <Component>componentPackage.malaguComponent;
-                for (const modulePath of [...malaguComponent.frontends || [], ...malaguComponent.backends || []]) {
-                    console.log(chalk`malagu {cyan module} - ${componentPackage.name}/${ modulePath }`);
-                }
-            }
         }
 
         return this._componentPackages;
-    }
-
-    protected parseEntry(name: string, component: Component, isModule: boolean) {
-        const config = component.config;
-        if (config) {
-            const prefix = isModule ? name : '.';
-            if (config.frontend && config.frontend.entry) {
-                if (typeof config.frontend.entry === 'string') {
-                    config.frontend.entry = `${prefix}/${config.frontend.entry}`;
-                } else {
-                    for (const key in config.frontend.entry) {
-                        if (config.frontend.entry.hasOwnProperty(key)) {
-                            config.frontend.entry[key] = `${prefix}/${config.frontend.entry[key]}`;
-                        }
-                    }
-                }
-            }
-            if (config.backend && config.backend.entry) {
-                if (typeof config.backend.entry === 'string') {
-                    config.backend.entry = `${prefix}/${config.backend.entry}`;
-                } else {
-                    for (const key in config.backend.entry) {
-                        if (config.backend.entry.hasOwnProperty(key)) {
-                            config.backend.entry[key] = `${prefix}/${config.backend.entry[key]}`;
-                        }
-                    }
-                }
-            }
-        }
-
-    }
-
-    protected doAddModuleIfExists(modulePaths: string[], fullModulePath: string, modulePath: string): void {
-        try {
-            this.resolveModule(fullModulePath);
-            if (modulePaths.indexOf(modulePath) === -1) {
-                modulePaths.push(modulePath);
-            }
-        } catch (error) {
-            // noop
-        }
-    }
-
-    protected addModuleIfExists(name: string, component: Component, isModule: boolean): void {
-        component.frontends = component.frontends || [];
-        component.backends = component.backends || [];
-        const prefix = isModule ? name : '.';
-        const frontendModulePath = paths.join('lib', 'browser', `${FRONTEND_TARGET}-module`);
-        const backendModulePath = paths.join('lib', 'node', `${BACKEND_TARGET}-module`);
-        const fullFrontendModulePath = `${prefix}/${frontendModulePath}`;
-        const fullBackendModulePath = `${prefix}/${backendModulePath}`;
-        this.doAddModuleIfExists(component.frontends, fullFrontendModulePath, frontendModulePath);
-        this.doAddModuleIfExists(component.backends, fullBackendModulePath, backendModulePath);
     }
 
     getComponentPackage(component: string): ComponentPackage | undefined {
@@ -210,22 +178,39 @@ export class ApplicationPackage {
         return this.getComponentPackage(component);
     }
 
-    protected newComponentPackage(raw: PublishedNodePackage): ComponentPackage {
+    newComponentPackage(raw: PublishedNodePackage): ComponentPackage {
+        raw.malaguComponent = raw.malaguComponent || {};
+        raw.malaguComponent.frontend = raw.malaguComponent.frontend || {};
+        raw.malaguComponent.backend = raw.malaguComponent.backend || {};
         return new ComponentPackage(raw);
     }
 
     get frontendModules(): Map<string, string> {
         if (!this._frontendModules) {
-            this._frontendModules = this.computeModules('frontends');
+            this._frontendModules = this.computeModules('modules', FRONTEND_TARGET);
         }
         return this._frontendModules;
     }
 
     get backendModules(): Map<string, string> {
         if (!this._backendModules) {
-            this._backendModules = this.computeModules('backends');
+            this._backendModules = this.computeModules('modules', BACKEND_TARGET);
         }
         return this._backendModules;
+    }
+
+    get frontendAssets(): Map<string, string> {
+        if (!this._frontendAssets) {
+            this._frontendAssets = this.computeModules('assets', FRONTEND_TARGET);
+        }
+        return this._frontendAssets;
+    }
+
+    get backendAssets(): Map<string, string> {
+        if (!this._backendAssets) {
+            this._backendAssets = this.computeModules('assets', BACKEND_TARGET);
+        }
+        return this._backendAssets;
     }
 
     get initHookModules() {
@@ -235,11 +220,25 @@ export class ApplicationPackage {
         return this._initHookModules;
     }
 
-    get serveHookModules() {
-        if (!this._initHookModules) {
-            this._initHookModules = this.computeModules('serveHooks');
+    get configHookModules() {
+        if (!this._configHookModules) {
+            this._configHookModules = this.computeModules('configHooks');
         }
-        return this._initHookModules;
+        return this._configHookModules;
+    }
+
+    get buildHookModules() {
+        if (!this._buildHookModules) {
+            this._buildHookModules = this.computeModules('buildHooks');
+        }
+        return this._buildHookModules;
+    }
+
+    get serveHookModules() {
+        if (!this._serveHookModules) {
+            this._serveHookModules = this.computeModules('serveHooks');
+        }
+        return this._serveHookModules;
     }
 
     get deployHookModules() {
@@ -249,22 +248,31 @@ export class ApplicationPackage {
         return this._deployHookModules;
     }
 
-    protected computeModules<P extends keyof Component>(tagret: P): Map<string, string> {
+    get webpackHookModules() {
+        if (!this._webpackHookModules) {
+            this._webpackHookModules = this.computeModules('webpackHooks');
+        }
+        return this._webpackHookModules;
+    }
+
+    isRoot(componentPackage: ComponentPackage | NodePackage) {
+        if (componentPackage.name === this.pkg.name) {
+            return true;
+        }
+        return false;
+    }
+
+    computeModules(type: string, target?: string): Map<string, string> {
         const result = new Map<string, string>();
         let moduleIndex = 1;
         for (const componentPackage of this.componentPackages) {
             const component = componentPackage.malaguComponent;
             if (component) {
-                const modulePaths = <string[]>component[tagret] || [];
+                const modulePaths = (target ? component[target][type] : component[type]) || [];
+                const modulePathBuilder = new ModulePathBuilder(this);
                 for (const modulePath of modulePaths) {
                     if (typeof modulePath === 'string') {
-                        let componentPath: string;
-                        if (componentPackage.name === this.pkg.name) {
-                            componentPath = paths.join(paths.resolve(this.projectPath), modulePath).split(paths.sep).join('/');
-                        } else {
-                            componentPath = paths.join(componentPackage.name, modulePath).split(paths.sep).join('/');
-                        }
-                        result.set(componentPackage.name, componentPath);
+                        result.set(componentPackage.name, modulePathBuilder.build(componentPackage, modulePath));
                         moduleIndex = moduleIndex + 1;
                     }
                 }

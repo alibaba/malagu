@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { existsSync, readFile, ensureFile, writeFile } from 'fs-extra';
 import { prompt } from 'inquirer';
 const yaml = require('js-yaml');
+const dotenv = require('dotenv').config();
 
 export interface Profile {
     accountId: string;
@@ -19,14 +20,14 @@ export class ProfileProvider {
 
         if (!quiet && !this.isAllRequiredExist(profile)) {
             await this.promptForProfile();
-            return await this.getProfile();
+            return this.getProfile();
         }
 
         return profile;
     }
 
     protected async getProfile(): Promise<Profile> {
-        return { ...await this.getProfileFromFile(), ...this.cleanObject(await this.getProfileFromEnv()) };
+        return { ...await this.getProfileFromFile(), ...this.cleanObject(await this.getProfileFromEnv()), ...this.cleanObject(await this.getProfileFromDotEnv())};
     }
 
     protected isAllRequiredExist(profile: Profile) {
@@ -68,6 +69,26 @@ export class ProfileProvider {
 
     protected getProfilePath() {
         return resolve(homedir(), '.fcli', 'config.yaml');
+    }
+
+    protected async getProfileFromDotEnv() {
+        const profile: Profile = <Profile>{};
+        if (dotenv) {
+            if (dotenv.error) {
+                return profile;
+            }
+
+            const parsed = dotenv.parsed;
+
+            profile.accountId = parsed['ACCOUNT_ID'];
+            profile.defaultRegion = parsed['DEFAULT_REGION'];
+            profile.defaultRegion = parsed['REGION'];
+            profile.accessKeyId = parsed['ACCESS_KEY_ID'];
+            profile.accessKeySecret = parsed['ACCESS_KEY_SECRET'];
+
+        }
+
+        return profile;
     }
 
     protected async getProfileFromFile(): Promise<Profile> {

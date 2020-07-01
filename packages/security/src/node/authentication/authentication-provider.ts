@@ -1,6 +1,6 @@
 import { Component, Autowired, Value } from '@malagu/core';
-import { AuthenticationProvider, Authentication, DEFAULT_AUTHENTICATION_PROVIDER__PRIORITY } from './authentication-protocol';
-import { Context, RequestMatcher } from '@malagu/core/lib/node';
+import { AuthenticationProvider, Authentication, DEFAULT_AUTHENTICATION_PROVIDER_PRIORITY } from './authentication-protocol';
+import { Context, RequestMatcher } from '@malagu/web/lib/node';
 import { PasswordEncoder } from '../crypto';
 import { UserStore, UserChecker } from '../user';
 import { BadCredentialsError } from '../error';
@@ -23,7 +23,7 @@ export class AuthenticationProviderImpl implements AuthenticationProvider {
     @Autowired(RequestMatcher)
     protected readonly requestMatcher: RequestMatcher;
 
-    priority = DEFAULT_AUTHENTICATION_PROVIDER__PRIORITY;
+    priority = DEFAULT_AUTHENTICATION_PROVIDER_PRIORITY;
 
     async authenticate(): Promise<Authentication> {
         const username = this.doGetValue(this.options.usernameKey);
@@ -33,7 +33,7 @@ export class AuthenticationProviderImpl implements AuthenticationProvider {
         }
         const user = await this.userStore.load(username);
         await this.userChecker.check(user);
-        if (!this.passwordEncoder.matches(password, user.password)) {
+        if (!await this.passwordEncoder.matches(password, user.password)) {
             throw new BadCredentialsError('Bad credentials');
         }
 
@@ -53,11 +53,10 @@ export class AuthenticationProviderImpl implements AuthenticationProvider {
         } else {
             return request.query[key];
         }
-        return '';
     }
 
     async support(): Promise<boolean> {
-       return this.requestMatcher.match('/login');
+        return !!await this.requestMatcher.match(this.options.loginUrl, this.options.loginMethod);
     }
 
 }

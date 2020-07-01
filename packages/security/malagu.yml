@@ -1,0 +1,23 @@
+malagu:
+  security:
+    enabled: true
+    usernameKey: username
+    passwordKey: password
+backend:
+  malagu:
+    security:
+      contextKey: malagu:securityContext
+      username: admin
+      password: MzQ0NTg4ZTk2NzQyYWI1ODA1MDFlNDBjMzZhZDY4OWQ1Zjc5ZDYxYzc2MjQ1NWZk # raw password 123456
+      passwordEncoder:
+        secret: 123456
+        encodeHashAsBase64: true
+      basic:
+        realm: realm
+      loginPage: /login
+      loginUrl: /login
+      loginMethod: POST
+      loginSuccessUrl: /
+      logoutUrl: /logout
+      logoutMethod: POST
+      logoutSuccessUrl: /login

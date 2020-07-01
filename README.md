@@ -1,101 +1,143 @@
-# Malagu
+# Malagu *([https://github.com/cellbang/malagu](https://github.com/cellbang/malagu))*
 
-Web development framework.
+Malagu is a serverless First, scalable and componentized application framework developed by TypeScript.
+
+*Read this in other languages: [简体中文](README.zh-cn.md)*
+
+**Features**
+
+1. Based on TypeScript
+1. Zero configuration
+1. Spring Boot-like development experience
+1. Serverless First
+1. componentization
+1. Front-end and back-end integration
+1. Aspect-oriented programming (AOP)
+1. Integrated ORM framework
+1. The command tool is extensible
+
+The origin of the name Malagu: In my hometown, the homonym "Malagu" means small stones. Stacked small stones can be used to build high-rise buildings, roads and bridges, and Malagu component arrangement can realize a variety of applications.
 
 ## Document
 
-* [Malagu Annotaion](https://github.com/muxiangqiu/malagu/blob/master/doc/annotation.md)
-* [Malagu Component](https://github.com/muxiangqiu/malagu/blob/master/doc/component.md)
-* [Malagu Configuration](https://github.com/muxiangqiu/malagu/blob/master/doc/config.md)
+To check out the [document](https://www.yuque.com/cellbang/malagu).
+
+## Quick Start
+
+1. Create an application
+
+![](https://img.alicdn.com/tfs/TB1BjYFcIKfxu4jSZPfXXb3dXXa-1425-818.gif)
+
+2. Run locally
+
+![](https://gw.alicdn.com/tfs/TB1Vb1rA.Y1gK0jSZFCXXcwqXXa-1425-818.gif)
+
+3. Debug locally
+
+![](https://img.alicdn.com/tfs/TB1j5KtAYj1gK0jSZFuXXcrHpXa-1425-818.gif)
+
+4. Deploy the application
+
+![](https://img.alicdn.com/tfs/TB1SbCnA4z1gK0jSZSgXXavwpXa-1425-818.gif)
 
 
-## Getting Started
-
-```bash
-npm install @malagu/cli@next -g
-npm install -g yarn
-malagu init demo
-malagu serve
-malagu build
-malagu deploy
-```
-
-## Project structure
-```
-.
-├── package.json
-├── src
-│   ├── browser
-│   │   ├── app.tsx
-│   │   ├── frontend-module.ts
-│   │   └── shell.tsx
-│   ├── common
-│   │   └── welcome-protocol.ts
-│   └── node
-│       ├── backend-module.ts
-│       └── welcome-server.ts
-└── tsconfig.json
-```
-
-## Defining interface
+## Dependency injection
 
 ```typescript
-// src/common/welcome-protocol.ts
-export const WelcomeServer = Symbol('WelcomeServer');
+@Component()
+export class A {
 
-export interface WelcomeServer {
-    say(): Promise<string>;
 }
 
-```
-## Defining server
-
-```typescript
-// src/node/welcome-server.ts
-import { WelcomeServer } from '../common/welcome-protocol';
-import { rpc } from '@malagu/core/lib/common/annotation';
-
-@rpc(WelcomeServer)
-export class WelcomeServerImpl implements WelcomeServer {
-    say(): Promise<string> {
-        return Promise.resolve('Welcome to Malagu');
-    }
+@Component()
+export class B {
+    @Autowired()
+    protected a: A;
 }
 ```
 
-## Using Server
+## Property injection
 
 ```typescript
-// src/browser/app.tsx
-import * as React from 'react';
-import { autorpc } from '@malagu/core/lib/common/annotation/detached';
-import { WelcomeServer } from '../common/welcome-protocol';
-
-interface Prop {}
-interface State {
-    response: string
+@Component()
+export class A {
+    @Value('foo') // Support EL expression syntax, such as @Value ('obj.xxx'), @Value ('arr [1]'), etc.
+    protected foo: string;
 }
+```
 
-export class App extends React.Component<Prop, State> {
+## MVC
 
-    @autorpc(WelcomeServer)
-    protected welcomeServer!: WelcomeServer;
-
-    constructor(prop: Prop) {
-        super(prop);
-        this.state = { response: 'Loading' };
+```typescript
+@Controller('users')
+export class UserController {
+    
+    @Get()
+    list(): Promise<User[]> {
+        ...
     }
 
-    async componentDidMount() {
-        const response = await this.welcomeServer.say();
-        this.setState({
-            response
-        });
+    @Get(':id')
+    get(@Param('id') id: number): Promise<User | undefined> {
+        ...
     }
 
-    render() {
-        return <div>{this.state.response}</div>
+    @Delete(':id')
+    async remove(@Param('id') id: number): Promise<void> {
+        ...
+    }
+
+    @Put()
+    async modify(@Body() user: User): Promise<void> {
+        ...
+    }
+
+    @Post()
+    create(@Body() user: User): Promise<User> {
+        ...
+    }
+
+}
+```
+
+## Database operations
+
+```typescript
+import { Controller, Get, Param, Delete, Put, Post, Body } from '@malagu/mvc/lib/node';
+import { Transactional, OrmContext } from '@malagu/typeorm/lib/node';
+import { User } from './entity';
+@Controller('users')
+export class UserController {
+    
+    @Get()
+    @Transactional({ readOnly: true })
+    list(): Promise<User[]> {
+        const repo = OrmContext.getRepository(User);
+        return repo.find();
+    }
+    @Get(':id')
+    @Transactional({ readOnly: true })
+    get(@Param('id') id: number): Promise<User | undefined> {
+        const repo = OrmContext.getRepository(User);
+        return repo.findOne(id);
+    }
+    @Delete(':id')
+    @Transactional()
+    async remove(@Param('id') id: number): Promise<void> {
+        const repo = OrmContext.getRepository(User);
+        await repo.delete(id);
+    }
+    @Put()
+    @Transactional()
+    async modify(@Body() user: User): Promise<void> {
+        const repo = OrmContext.getRepository(User);
+        await repo.update(user.id, user);
+    }
+    @Post()
+    @Transactional()
+    create(@Body() user: User): Promise<User> {
+        const repo = OrmContext.getRepository(User);
+        return repo.save(user);
     }
 }
-
 ```

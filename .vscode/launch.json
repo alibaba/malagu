@@ -6,6 +6,10 @@
             "request": "launch",
             "name": "malagu serve",
             "program": "${workspaceRoot}/node_modules/@malagu/cli/bin/malagu-serve",
+            // "args": ["--mode", "test"],
+            "env": {
+                "NODE_ENV": "development"
+            },
             "cwd": "${workspaceFolder}/app",
             "sourceMaps": true,
             "smartStep": true,
